@@ -1,0 +1,2 @@
+backend/vector_store/child_store/chroma.sqlite3 filter=lfs diff=lfs merge=lfs -text
+backend/vector_store/chroma.sqlite3 filter=lfs diff=lfs merge=lfs -text

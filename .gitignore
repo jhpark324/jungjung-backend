@@ -65,6 +65,11 @@ logs/
 *.pt
 *.onnx
 
+# Vector Store (대용량)
+backend/vector_store/
+*.sqlite3
+*.pkl
+
 # ==========================
 # Data (선택적)
 # ==========================

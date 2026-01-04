@@ -65,6 +65,8 @@ logs/
 *.pt
 *.onnx
 
+# Vector Store는 Git LFS로 관리 (.gitattributes 참조)
+
 # ==========================
 # Data (선택적)
 # ==========================

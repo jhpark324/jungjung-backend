@@ -65,10 +65,7 @@ logs/
 *.pt
 *.onnx
 
-# Vector Store (대용량)
-backend/vector_store/
-*.sqlite3
-*.pkl
+# Vector Store는 Git LFS로 관리 (.gitattributes 참조)
 
 # ==========================
 # Data (선택적)

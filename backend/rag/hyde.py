@@ -17,6 +17,7 @@ HyDE (Hypothetical Document Embedding) 생성기
     결과 반환
 """
 
+from datetime import datetime, timedelta
 from langchain_upstage import ChatUpstage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -27,11 +28,67 @@ HYDE_PROMPT = ChatPromptTemplate.from_messages([
 사용자의 질문을 받아, 해당 질문에 대한 답변이 포함되어 있을 법한 
 국회 회의록의 일부를 가상으로 작성해주세요.
 
-작성 규칙:
-1. 실제 국회 회의록처럼 작성하세요 (발언자, 날짜 등 포함 가능)
-2. 질문의 핵심 키워드와 관련 용어를 자연스럽게 포함하세요
-3. 150-300자 내외로 간결하게 작성하세요
-4. 실제 사실이 아니어도 됩니다. 검색용 가상 문서입니다."""),
+## 현재 날짜 정보
+- 오늘 날짜: {current_date}
+
+## 중요: 회의록 문서 헤더 형식
+우리 데이터베이스의 모든 회의록 청크는 다음과 같은 헤더 형식을 가집니다:
+
+```
+[문서 정보]
+- 문서명: 국회본회의_회의록._제XXX회(XX차).md
+- 회기: 제XXX회
+- 차수: XX차
+- 유형: 국회본회의_회의록
+---
+제XXX회-제XX차(YYYY년MM월DD일)
+```
+
+**가상 문서를 작성할 때 반드시 이 헤더 형식을 포함하세요!**
+
+## 날짜 처리 규칙
+사용자 질문에 날짜 관련 표현이 있으면:
+
+1. 상대적 날짜 → 구체적 날짜로 변환:
+   - "오늘" → {current_date}
+   - "어제" → {yesterday_date}
+   - "최근", "가장 최근" → 가장 높은 회차 (제430회)
+   
+2. 구체적 날짜 → 헤더 형식으로 변환:
+   - "12월 2일" → "제XXX회-제XX차(2025년12월2일)" 형식으로 작성
+   - "12월 23일" → "제XXX회-제XX차(2025년12월23일)" 형식으로 작성
+   - 회차를 모르면 "제XXX회"로 표기해도 됩니다
+
+## 가상 문서 작성 예시
+
+질문: "12월 2일 회의록 알려줘"
+가상 문서:
+```
+[문서 정보]
+- 문서명: 국회본회의_회의록._제429회(14차).md
+- 회기: 제429회
+- 차수: 14차
+- 유형: 국회본회의_회의록
+---
+제429회-제14차(2025년12월2일)
+
+본회의가 오후 8시 30분에 개의되었습니다. 우원식 의장이 성원이 되었으므로 제14차 본회의를 개의하겠습니다라고 선언했습니다.
+```
+
+질문: "가장 최근 회의록 알려줘"
+가상 문서:
+```
+[문서 정보]
+- 회기: 제430회
+- 유형: 국회본회의_회의록
+---
+제430회 국회 본회의 회의록입니다. 가장 최근에 개최된 본회의로서 의장이 회의 개의를 선언하였습니다.
+```
+
+## 작성 규칙
+1. **날짜가 있는 질문은 반드시 헤더 형식을 포함하세요**
+2. 150-300자 내외로 간결하게 작성하세요
+3. 실제 사실이 아니어도 됩니다. 검색용 가상 문서입니다."""),
     ("human", "질문: {query}\n\n위 질문에 대한 답변이 포함된 가상의 국회 회의록 일부를 작성해주세요.")
 ])
 
@@ -43,6 +100,17 @@ class HyDEGenerator:
         self.llm = ChatUpstage(model=model_name)
         self.chain = HYDE_PROMPT | self.llm | StrOutputParser()
     
+    def _get_date_context(self) -> dict:
+        """현재 날짜 컨텍스트 생성"""
+        today = datetime.now()
+        yesterday = today - timedelta(days=1)
+        
+        return {
+            "current_date": today.strftime("%Y년%m월%d일"),
+            "yesterday_date": yesterday.strftime("%Y년%m월%d일"),
+            "current_year": str(today.year),
+        }
+    
     def generate(self, query: str) -> str:
         """
         쿼리를 받아 가상의 문서를 생성
@@ -53,7 +121,13 @@ class HyDEGenerator:
         Returns:
             가상 문서 텍스트
         """
-        hypothetical_doc = self.chain.invoke({"query": query})
+        # 날짜 컨텍스트 주입
+        date_context = self._get_date_context()
+        
+        hypothetical_doc = self.chain.invoke({
+            "query": query,
+            **date_context
+        })
         return hypothetical_doc
     
     def generate_with_original(self, query: str) -> str:
@@ -62,3 +136,4 @@ class HyDEGenerator:
         """
         hypothetical_doc = self.generate(query)
         return f"{query}\n\n{hypothetical_doc}"
+

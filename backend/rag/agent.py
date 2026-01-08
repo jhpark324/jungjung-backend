@@ -38,6 +38,7 @@ class AgentState(TypedDict):
     use_hyde: bool
     top_children: int
     top_parents: int
+    enable_visualization: bool  # 시각화 활성화 여부
     
     # 라우팅 결과
     route: Literal["RAG", "LLM"]
@@ -46,6 +47,7 @@ class AgentState(TypedDict):
     hypothetical_doc: Optional[str]
     documents: Optional[List[Document]]
     answer: str
+    visualization: Optional[dict]  # 시각화 결과
 
 
 # =============================================================================
@@ -95,13 +97,15 @@ def create_rag_agent_node(rag_graph: RAGGraph):
             query=state["query"],
             use_hyde=state.get("use_hyde", True),
             top_children=state.get("top_children", 20),
-            top_parents=state.get("top_parents", 5)
+            top_parents=state.get("top_parents", 5),
+            enable_visualization=state.get("enable_visualization", False)
         )
         
         return {
             "hypothetical_doc": result["hypothetical_doc"],
             "documents": result["documents"],
-            "answer": result["answer"]
+            "answer": result["answer"],
+            "visualization": result.get("visualization")
         }
     
     return rag_agent_node
@@ -117,7 +121,8 @@ def create_llm_node(general_llm: GeneralLLM):
         return {
             "hypothetical_doc": None,
             "documents": None,
-            "answer": answer
+            "answer": answer,
+            "visualization": None
         }
     
     return llm_node
@@ -189,10 +194,18 @@ class Agent:
         query: str,
         use_hyde: bool = True,
         top_children: int = 20,
-        top_parents: int = 5
+        top_parents: int = 5,
+        enable_visualization: bool = True
     ) -> dict:
         """
         에이전트 실행
+        
+        Args:
+            query: 사용자 질문
+            use_hyde: HyDE 사용 여부
+            top_children: 검색할 child 문서 수
+            top_parents: 반환할 parent 문서 수
+            enable_visualization: 시각화 생성 여부
         
         Returns:
             {
@@ -200,7 +213,8 @@ class Agent:
                 "route": "RAG" | "LLM",
                 "hypothetical_doc": str | None,
                 "documents": List[Document] | None,
-                "answer": str
+                "answer": str,
+                "visualization": dict | None
             }
         """
         initial_state = {
@@ -208,6 +222,7 @@ class Agent:
             "use_hyde": use_hyde,
             "top_children": top_children,
             "top_parents": top_parents,
+            "enable_visualization": enable_visualization,
         }
         
         result = self.graph.invoke(initial_state)
@@ -217,5 +232,7 @@ class Agent:
             "route": result["route"],
             "hypothetical_doc": result.get("hypothetical_doc"),
             "documents": result.get("documents"),
-            "answer": result["answer"]
+            "answer": result["answer"],
+            "visualization": result.get("visualization")
         }
+

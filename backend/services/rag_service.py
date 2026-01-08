@@ -19,7 +19,8 @@ class RAGService:
         query: str, 
         top_children: int = 20,
         top_parents: int = 5,
-        use_hyde: bool = True
+        use_hyde: bool = True,
+        enable_visualization: bool = True
     ) -> Dict[str, Any]:
         """
         에이전트 실행 - 질문 분류 후 적절한 처리
@@ -29,6 +30,7 @@ class RAGService:
             top_children: 앙상블에서 가져올 Child 수
             top_parents: 최종 반환할 Parent 수
             use_hyde: HyDE 사용 여부 (RAG 모드에서만 적용)
+            enable_visualization: 시각화 생성 여부
         
         Returns:
             에이전트 실행 결과
@@ -37,7 +39,8 @@ class RAGService:
             query=query,
             use_hyde=use_hyde,
             top_children=top_children,
-            top_parents=top_parents
+            top_parents=top_parents,
+            enable_visualization=enable_visualization
         )
         
         # 응답 구성
@@ -57,8 +60,12 @@ class RAGService:
                 }
                 for doc in (result["documents"] or [])
             ]
+            # 시각화 결과 포함
+            if enable_visualization and result.get("visualization"):
+                response["visualization"] = result["visualization"]
         else:
             response["hypothetical_doc"] = None
             response["sources"] = None
         
         return response
+
